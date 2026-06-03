@@ -288,6 +288,45 @@ export default function App() {
     );
   };
 
+  // ── エクスポート / インポート ────────────────────────────────────
+  const fileInputRef = useRef(null);
+  const doExport = () => {
+    const data = JSON.stringify(
+      { vLines, hLines, cells, colWidths, rowHeights, merges },
+      null,
+      2,
+    );
+    const url = URL.createObjectURL(
+      new Blob([data], { type: "application/json" }),
+    );
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "cellline.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  const doImport = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const d = JSON.parse(ev.target.result);
+        if (d.vLines) setVLines(d.vLines);
+        if (d.hLines) setHLines(d.hLines);
+        if (d.cells) setCells(d.cells);
+        if (d.colWidths) setColWidths(d.colWidths);
+        if (d.rowHeights) setRowHeights(d.rowHeights);
+        if (d.merges) setMerges(d.merges);
+      } catch {
+        setErrorMsg("ファイルの読み込みに失敗しました");
+        setTimeout(() => setErrorMsg(null), 3000);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
   // ── 結合対応の挿入/削除 ──────────────────────────────────────────
   const adjMCol = (ci, ms) =>
     ms.map((m) => {
@@ -724,6 +763,44 @@ export default function App() {
             {errorMsg}
           </span>
         )}
+        <div style={{ width: 1, height: 24, background: "#ddd" }} />
+        <button
+          onClick={doExport}
+          style={{
+            padding: "5px 12px",
+            fontSize: 12,
+            fontWeight: 600,
+            border: "1.5px solid #888",
+            borderRadius: 5,
+            background: "#fff",
+            color: "#555",
+            cursor: "pointer",
+          }}
+        >
+          ↓ 保存
+        </button>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            padding: "5px 12px",
+            fontSize: 12,
+            fontWeight: 600,
+            border: "1.5px solid #888",
+            borderRadius: 5,
+            background: "#fff",
+            color: "#555",
+            cursor: "pointer",
+          }}
+        >
+          ↑ 読込
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          onChange={doImport}
+          style={{ display: "none" }}
+        />
       </div>
 
       <div style={{ overflowX: "auto" }}>
