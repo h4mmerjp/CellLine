@@ -9,6 +9,15 @@ const MIN_W = 40,
   DEF_H = 70;
 
 const makeGrid = (r, c) => Array.from({ length: r }, () => Array(c).fill(""));
+
+const STORAGE_KEY = "cellline-state";
+const loadSaved = () => {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
+  } catch {
+    return null;
+  }
+};
 const normSel = (r1, c1, r2, c2) => ({
   r1: Math.min(r1, r2),
   r2: Math.max(r1, r2),
@@ -145,12 +154,22 @@ const InsertBtn = ({ onClick, axis }) => (
 );
 
 export default function App() {
-  const [vLines, setVLines] = useState(["", "", "", "", ""]);
-  const [hLines, setHLines] = useState(["", "", "", "", ""]);
-  const [cells, setCells] = useState(() => makeGrid(4, 4));
-  const [colWidths, setColWidths] = useState(() => Array(4).fill(DEF_W));
-  const [rowHeights, setRowHeights] = useState(() => Array(4).fill(DEF_H));
-  const [merges, setMerges] = useState([]);
+  const [vLines, setVLines] = useState(
+    () => loadSaved()?.vLines ?? ["", "", "", "", ""],
+  );
+  const [hLines, setHLines] = useState(
+    () => loadSaved()?.hLines ?? ["", "", "", "", ""],
+  );
+  const [cells, setCells] = useState(
+    () => loadSaved()?.cells ?? makeGrid(4, 4),
+  );
+  const [colWidths, setColWidths] = useState(
+    () => loadSaved()?.colWidths ?? Array(4).fill(DEF_W),
+  );
+  const [rowHeights, setRowHeights] = useState(
+    () => loadSaved()?.rowHeights ?? Array(4).fill(DEF_H),
+  );
+  const [merges, setMerges] = useState(() => loadSaved()?.merges ?? []);
   const [selection, setSelection] = useState(null);
   const [selStart, setSelStart] = useState(null);
   const [editing, setEditing] = useState(null);
@@ -173,6 +192,22 @@ export default function App() {
   useEffect(() => {
     selStartRef.current = selStart;
   }, [selStart]);
+  useEffect(() => {
+    const id = setTimeout(() => {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          vLines,
+          hLines,
+          cells,
+          colWidths,
+          rowHeights,
+          merges,
+        }),
+      );
+    }, 500);
+    return () => clearTimeout(id);
+  }, [vLines, hLines, cells, colWidths, rowHeights, merges]);
 
   const rows = hLines.length - 1;
   const cols = vLines.length - 1;
