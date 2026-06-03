@@ -1,0 +1,30 @@
+{
+  "name": "cellline",
+  "version": "1.0.0",
+  "description": "Labeled grid editor — CellLine",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/h4mmerjp/CellLine.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/h4mmerjp/CellLine/issues"
+  },
+  "homepage": "https://github.com/h4mmerjp/CellLine#readme",
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.2",
+    "vite": "^8.0.16"
+  },
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  }
+}
