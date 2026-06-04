@@ -38,9 +38,8 @@ const LabelBox = ({
   onHandleUp,
 }) => {
   const [localEdit, setLocalEdit] = useState(false);
-  const drag = labelDrag?.type === type && labelDrag.from === idx;
-  const target =
-    labelDrag?.type === type && labelDrag.to === idx && labelDrag.from !== idx;
+  const drag = labelDrag?.type === type && labelDrag.to === idx;
+  const target = false;
   return (
     <div
       style={{
@@ -57,6 +56,7 @@ const LabelBox = ({
         onMouseUp={onHandleUp}
         onTouchStart={(e) => onHandleDown(type, idx, e)}
         onTouchEnd={onHandleUp}
+        onContextMenu={(e) => e.preventDefault()}
         title="長押しでラベル移動"
         style={{
           cursor: "grab",
@@ -65,6 +65,8 @@ const LabelBox = ({
           color: "#bbb",
           opacity: drag ? 1 : 0.5,
           userSelect: "none",
+          WebkitUserSelect: "none",
+          touchAction: "none",
           flexShrink: 0,
         }}
       >
@@ -180,6 +182,7 @@ export default function App() {
   const labelDragRef = useRef(null);
   const labelStartRef = useRef(null);
   const labelTimerRef = useRef(null);
+  const labelOrigRef = useRef(null);
   const colWRef = useRef(colWidths);
   const rowHRef = useRef(rowHeights);
   const selStartRef = useRef(selStart);
@@ -496,17 +499,31 @@ export default function App() {
       x: e.clientX ?? e.touches?.[0]?.clientX ?? 0,
       y: e.clientY ?? e.touches?.[0]?.clientY ?? 0,
     });
+    const applyReorder = (orig, from, to) => {
+      if (from === to) return orig;
+      const a = [...orig];
+      const [x] = a.splice(from, 1);
+      a.splice(to, 0, x);
+      return a;
+    };
     const onMove = (e) => {
-      if (!labelDragRef.current || !labelStartRef.current) return;
+      if (
+        !labelDragRef.current ||
+        !labelStartRef.current ||
+        !labelOrigRef.current
+      )
+        return;
+      if (e.cancelable) e.preventDefault();
       const { x, y } = xy(e);
       const { type, from } = labelDragRef.current;
+      const maxIdx = labelOrigRef.current.length - 1;
       let newTo;
       if (type === "h") {
         const dy = y - labelStartRef.current.y;
         newTo = Math.max(
           0,
           Math.min(
-            99,
+            maxIdx,
             from + Math.round(dy / (rowHRef.current[from] ?? DEF_H)),
           ),
         );
@@ -515,7 +532,7 @@ export default function App() {
         newTo = Math.max(
           0,
           Math.min(
-            99,
+            maxIdx,
             from + Math.round(dx / (colWRef.current[from] ?? DEF_W)),
           ),
         );
@@ -523,28 +540,36 @@ export default function App() {
       if (newTo !== labelDragRef.current.to) {
         labelDragRef.current = { ...labelDragRef.current, to: newTo };
         setLabelDrag({ ...labelDragRef.current });
+        const newLines = applyReorder(labelOrigRef.current, from, newTo);
+        if (type === "h") setHLines(newLines);
+        else setVLines(newLines);
       }
     };
     const onUp = () => {
       clearTimeout(labelTimerRef.current);
-      if (labelDragRef.current) {
-        const { type, from, to } = labelDragRef.current;
-        if (type === "h") reorderH(from, to);
-        else reorderV(from, to);
-        labelDragRef.current = null;
-        labelStartRef.current = null;
-        setLabelDrag(null);
-      }
+      labelDragRef.current = null;
+      labelStartRef.current = null;
+      labelOrigRef.current = null;
+      setLabelDrag(null);
+    };
+    const onCancel = () => {
+      clearTimeout(labelTimerRef.current);
+      labelDragRef.current = null;
+      labelStartRef.current = null;
+      labelOrigRef.current = null;
+      setLabelDrag(null);
     };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
-    window.addEventListener("touchmove", onMove, { passive: true });
+    window.addEventListener("touchmove", onMove, { passive: false });
     window.addEventListener("touchend", onUp);
+    window.addEventListener("touchcancel", onCancel);
     return () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
       window.removeEventListener("touchmove", onMove);
       window.removeEventListener("touchend", onUp);
+      window.removeEventListener("touchcancel", onCancel);
     };
     // eslint-disable-next-line
   }, []);
@@ -556,6 +581,7 @@ export default function App() {
     const y = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
     labelStartRef.current = { x, y };
     labelTimerRef.current = setTimeout(() => {
+      labelOrigRef.current = type === "h" ? [...hLines] : [...vLines];
       labelDragRef.current = { type, from: idx, to: idx };
       setLabelDrag({ type, from: idx, to: idx });
     }, 400);
