@@ -462,6 +462,7 @@ export default function App() {
   useEffect(() => {
     if (!resizing) return;
     const onMove = (e) => {
+      if (e.cancelable) e.preventDefault();
       const pos =
         resizing.type === "col"
           ? (e.clientX ?? e.touches?.[0]?.clientX ?? 0)
@@ -892,6 +893,7 @@ export default function App() {
                         color: "#4a90d9",
                         lineHeight: 1,
                         userSelect: "none",
+                        touchAction: "none",
                       }}
                       title="ドラッグで幅変更"
                     >
@@ -1039,6 +1041,7 @@ export default function App() {
                       color: "#3aaa7a",
                       lineHeight: 1,
                       userSelect: "none",
+                      touchAction: "none",
                     }}
                     title="ドラッグで高さ変更"
                   >
@@ -1125,6 +1128,7 @@ export default function App() {
                   color: "#3aaa7a",
                   lineHeight: 1,
                   userSelect: "none",
+                  touchAction: "none",
                 }}
                 title="ドラッグで高さ変更"
               >
