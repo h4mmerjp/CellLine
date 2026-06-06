@@ -38,41 +38,49 @@ export function useLabelDrag(dispatch, hLines, vLines, colWidths, rowHeights) {
         return;
       if (e.cancelable) e.preventDefault();
       const { x, y } = xy(e);
-      const { type, from } = labelDragRef.current;
-      const maxIdx = labelOrigRef.current.length - 1;
+      const { type, to: currentTo } = labelDragRef.current;
+      const { origFrom, size, origLabels } = labelOrigRef.current;
+      // rowHeights.length = rows, hLines.length = rows+1 → rows未満なら行ごと移動
+      const fullCount =
+        type === "h" ? rowHRef.current.length : colWRef.current.length;
+      const isFullReorder = origFrom < fullCount;
+      const maxIdx = isFullReorder ? fullCount - 1 : origLabels.length - 1;
       const newTo =
         type === "h"
           ? Math.max(
               0,
               Math.min(
                 maxIdx,
-                from +
-                  Math.round(
-                    (y - labelStartRef.current.y) /
-                      (rowHRef.current[from] ?? DEF_H),
-                  ),
+                origFrom + Math.round((y - labelStartRef.current.y) / size),
               ),
             )
           : Math.max(
               0,
               Math.min(
                 maxIdx,
-                from +
-                  Math.round(
-                    (x - labelStartRef.current.x) /
-                      (colWRef.current[from] ?? DEF_W),
-                  ),
+                origFrom + Math.round((x - labelStartRef.current.x) / size),
               ),
             );
-      if (newTo !== labelDragRef.current.to) {
+      if (newTo !== currentTo) {
         labelDragRef.current = { ...labelDragRef.current, to: newTo };
         setLabelDrag({ ...labelDragRef.current });
-        const nl = reorder(labelOrigRef.current, from, newTo);
-        dispatch(
-          type === "h"
-            ? { type: "SET_HLINES", hLines: nl, skipHistory: true }
-            : { type: "SET_VLINES", vLines: nl, skipHistory: true },
-        );
+        if (isFullReorder) {
+          // 行・列ごと移動（セル・高さ幅・結合も同時に並び替え）
+          dispatch({
+            type: type === "h" ? "REORDER_ROW" : "REORDER_COL",
+            from: currentTo,
+            to: newTo,
+            skipHistory: true,
+          });
+        } else {
+          // 最終ボーダーラベルはラベルのみ移動
+          const nl = reorder(origLabels, origFrom, newTo);
+          dispatch(
+            type === "h"
+              ? { type: "SET_HLINES", hLines: nl, skipHistory: true }
+              : { type: "SET_VLINES", vLines: nl, skipHistory: true },
+          );
+        }
       }
     };
     const cleanup = () => {
@@ -106,7 +114,14 @@ export function useLabelDrag(dispatch, hLines, vLines, colWidths, rowHeights) {
     };
     labelTimerRef.current = setTimeout(() => {
       dispatch({ type: "HISTORY_CHECKPOINT" });
-      labelOrigRef.current = type === "h" ? [...hLines] : [...vLines];
+      labelOrigRef.current = {
+        origFrom: idx,
+        size:
+          type === "h"
+            ? (rowHRef.current[idx] ?? DEF_H)
+            : (colWRef.current[idx] ?? DEF_W),
+        origLabels: type === "h" ? [...hLines] : [...vLines],
+      };
       labelDragRef.current = { type, from: idx, to: idx };
       setLabelDrag({ type, from: idx, to: idx });
     }, 400);

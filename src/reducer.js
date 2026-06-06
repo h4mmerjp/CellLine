@@ -15,6 +15,39 @@ export const initGridState = (saved) => ({
   merges: saved?.merges ?? [],
 });
 
+// 並び替え後に結合セルの座標を更新（跨ぐものは破棄）
+const reorderMerges = (merges, axis, f, t) => {
+  const mapIdx = (i) => {
+    if (f < t) {
+      if (i === f) return t;
+      if (i > f && i <= t) return i - 1;
+    } else {
+      if (i === f) return t;
+      if (i >= t && i < f) return i + 1;
+    }
+    return i;
+  };
+  return merges
+    .map((m) => {
+      if (axis === "h") {
+        const rows = Array.from({ length: m.rowSpan }, (_, i) => m.r + i)
+          .map(mapIdx)
+          .sort((a, b) => a - b);
+        if (!rows.every((r, i) => i === 0 || r === rows[i - 1] + 1))
+          return null;
+        return { ...m, r: rows[0] };
+      } else {
+        const cols = Array.from({ length: m.colSpan }, (_, i) => m.c + i)
+          .map(mapIdx)
+          .sort((a, b) => a - b);
+        if (!cols.every((c, i) => i === 0 || c === cols[i - 1] + 1))
+          return null;
+        return { ...m, c: cols[0] };
+      }
+    })
+    .filter(Boolean);
+};
+
 // ── Grid Reducer ─────────────────────────────────────────────────────
 export const gridReducer = (state, action) => {
   switch (action.type) {
@@ -173,6 +206,42 @@ export const gridReducer = (state, action) => {
           (m) => !(m.r === action.r && m.c === action.c),
         ),
       };
+    case "REORDER_ROW": {
+      // cells・rowHeights・hLines を同時に並び替え（行ごと移動）
+      const { from: f, to: t } = action;
+      if (f === t) return state;
+      const ra = (arr) => {
+        const a = [...arr];
+        const [x] = a.splice(f, 1);
+        a.splice(t, 0, x);
+        return a;
+      };
+      return {
+        ...state,
+        hLines: ra(state.hLines),
+        cells: ra(state.cells),
+        rowHeights: ra(state.rowHeights),
+        merges: reorderMerges(state.merges, "h", f, t),
+      };
+    }
+    case "REORDER_COL": {
+      // cells・colWidths・vLines を同時に並び替え（列ごと移動）
+      const { from: f, to: t } = action;
+      if (f === t) return state;
+      const ra = (arr) => {
+        const a = [...arr];
+        const [x] = a.splice(f, 1);
+        a.splice(t, 0, x);
+        return a;
+      };
+      return {
+        ...state,
+        vLines: ra(state.vLines),
+        cells: state.cells.map((row) => ra(row)),
+        colWidths: ra(state.colWidths),
+        merges: reorderMerges(state.merges, "v", f, t),
+      };
+    }
     case "LOAD":
       return {
         vLines: action.data.vLines ?? state.vLines,
