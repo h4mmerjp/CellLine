@@ -242,6 +242,40 @@ export const gridReducer = (state, action) => {
         merges: reorderMerges(state.merges, "v", f, t),
       };
     }
+    case "REORDER_ROW_CELLS": {
+      // ラベルは動かさず、セル・高さ・結合だけ並び替え
+      const { from: f, to: t } = action;
+      if (f === t) return state;
+      const ra = (arr) => {
+        const a = [...arr];
+        const [x] = a.splice(f, 1);
+        a.splice(t, 0, x);
+        return a;
+      };
+      return {
+        ...state,
+        cells: ra(state.cells),
+        rowHeights: ra(state.rowHeights),
+        merges: reorderMerges(state.merges, "h", f, t),
+      };
+    }
+    case "REORDER_COL_CELLS": {
+      // ラベルは動かさず、セル・幅・結合だけ並び替え
+      const { from: f, to: t } = action;
+      if (f === t) return state;
+      const ra = (arr) => {
+        const a = [...arr];
+        const [x] = a.splice(f, 1);
+        a.splice(t, 0, x);
+        return a;
+      };
+      return {
+        ...state,
+        cells: state.cells.map((row) => ra(row)),
+        colWidths: ra(state.colWidths),
+        merges: reorderMerges(state.merges, "v", f, t),
+      };
+    }
     case "LOAD":
       return {
         vLines: action.data.vLines ?? state.vLines,

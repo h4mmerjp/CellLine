@@ -1,5 +1,6 @@
-import { DEF_W, DEF_H } from "./reducer";
+import { DEF_H } from "./reducer";
 import { LabelBox, InsertBtn } from "./components";
+import ColHeader from "./ColHeader";
 
 const lColor = (l) => (l ? "#333" : "#ddd");
 const lWeight = (l) => (l ? 2 : 1);
@@ -63,6 +64,9 @@ export default function Grid({
   startResize,
   onHandleDown,
   onHandleUp,
+  cellReorder,
+  onCellHandleDown,
+  onCellHandleUp,
   setEditing,
   setSelection,
 }) {
@@ -97,111 +101,18 @@ export default function Grid({
     <div style={{ overflowX: "auto" }}>
       <div style={{ display: "inline-block" }}>
         {/* 縦線ラベル行 */}
-        <div style={{ display: "flex", alignItems: "flex-end" }}>
-          <div style={{ width: GUTTER, flexShrink: 0 }} />
-          {vLines.map((label, vi) => {
-            const isLast = vi === vLines.length - 1;
-            const w = isLast ? 0 : (colWidths[vi] ?? DEF_W);
-            return (
-              <div
-                key={vi}
-                style={{
-                  width: w,
-                  flexShrink: 0,
-                  position: "relative",
-                  height: 28,
-                  overflow: "visible",
-                }}
-              >
-                <div
-                  style={{
-                    position: "absolute",
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: lWeight(label),
-                    background: lColor(label),
-                  }}
-                />
-                {vi > 0 && (
-                  <div
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      startResize("col", vi - 1, e.clientX, colWidths[vi - 1]);
-                    }}
-                    onTouchStart={(e) => {
-                      e.stopPropagation();
-                      startResize(
-                        "col",
-                        vi - 1,
-                        e.touches[0].clientX,
-                        colWidths[vi - 1],
-                      );
-                    }}
-                    style={resizeHandle("col")}
-                    title="ドラッグで幅変更"
-                  >
-                    ▼
-                  </div>
-                )}
-                <div
-                  style={{
-                    position: "absolute",
-                    left: 0,
-                    bottom: 0,
-                    transform: "translateX(-50%)",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    zIndex: 2,
-                    background: "#fafafa",
-                    padding: "0 3px",
-                  }}
-                >
-                  <LabelBox
-                    value={label}
-                    onChange={(v) =>
-                      dispatch({ type: "SET_VLINE", idx: vi, value: v })
-                    }
-                    type="v"
-                    idx={vi}
-                    width={54}
-                    placeholder="ラベル"
-                    labelDrag={labelDrag}
-                    onHandleDown={onHandleDown}
-                    onHandleUp={onHandleUp}
-                  />
-                  <div
-                    style={{
-                      width: lWeight(label),
-                      height: 4,
-                      background: lColor(label),
-                    }}
-                  />
-                </div>
-                <div
-                  style={{
-                    position: "absolute",
-                    left: "50%",
-                    top: 2,
-                    transform: "translateX(-50%)",
-                    zIndex: 5,
-                  }}
-                >
-                  <InsertBtn
-                    onClick={() =>
-                      isLast
-                        ? dispatch({ type: "ADD_COL" })
-                        : dispatch({ type: "INSERT_COL_AFTER", idx: vi })
-                    }
-                    axis="col"
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <ColHeader
+          vLines={vLines}
+          colWidths={colWidths}
+          dispatch={dispatch}
+          labelDrag={labelDrag}
+          onHandleDown={onHandleDown}
+          onHandleUp={onHandleUp}
+          cellReorder={cellReorder}
+          onCellHandleDown={onCellHandleDown}
+          onCellHandleUp={onCellHandleUp}
+          startResize={startResize}
+        />
 
         {/* メイン CSS Grid */}
         <div
@@ -261,6 +172,33 @@ export default function Grid({
                   ▶
                 </div>
               )}
+              {/* 行セル並び替えハンドル */}
+              <div
+                onMouseDown={(e) => onCellHandleDown("h", ri, e)}
+                onMouseUp={onCellHandleUp}
+                onTouchStart={(e) => onCellHandleDown("h", ri, e)}
+                onTouchEnd={onCellHandleUp}
+                onContextMenu={(e) => e.preventDefault()}
+                title="長押しで行を移動（ラベル固定）"
+                style={{
+                  position: "absolute",
+                  left: 2,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  cursor: "grab",
+                  fontSize: 9,
+                  color:
+                    cellReorder?.type === "h" && cellReorder.to === ri
+                      ? "#f59e0b"
+                      : "#bbb",
+                  userSelect: "none",
+                  WebkitUserSelect: "none",
+                  touchAction: "none",
+                  zIndex: 4,
+                }}
+              >
+                ⠿
+              </div>
               <div
                 style={{
                   position: "absolute",
