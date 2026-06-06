@@ -183,6 +183,8 @@ export default function App() {
   const labelStartRef = useRef(null);
   const labelTimerRef = useRef(null);
   const labelOrigRef = useRef(null);
+  const cellTouchTimerRef = useRef(null);
+  const cellTouchRef = useRef(null);
   const colWRef = useRef(colWidths);
   const rowHRef = useRef(rowHeights);
   const selStartRef = useRef(selStart);
@@ -601,6 +603,44 @@ export default function App() {
       setSelection(normSel(r, c, r, c));
     }
   };
+
+  // タッチは長押し後にセル選択（それまでは通常スクロール）
+  const onCellTouchStart = (r, c, e) => {
+    if (editing?.r === r && editing?.c === c) return;
+    const touch = e.touches[0];
+    cellTouchRef.current = { r, c, x: touch.clientX, y: touch.clientY };
+    cellTouchTimerRef.current = setTimeout(() => {
+      cellTouchRef.current = null;
+      setSelStart({ r, c });
+      setSelection(normSel(r, c, r, c));
+    }, 400);
+  };
+
+  // 長押し待機中にスクロールを検知したらキャンセル
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!cellTouchRef.current) return;
+      const t = e.touches[0];
+      const dx = t.clientX - cellTouchRef.current.x;
+      const dy = t.clientY - cellTouchRef.current.y;
+      if (Math.hypot(dx, dy) > 10) {
+        clearTimeout(cellTouchTimerRef.current);
+        cellTouchRef.current = null;
+      }
+    };
+    const onEnd = () => {
+      clearTimeout(cellTouchTimerRef.current);
+      cellTouchRef.current = null;
+    };
+    window.addEventListener("touchmove", onMove, { passive: true });
+    window.addEventListener("touchend", onEnd);
+    window.addEventListener("touchcancel", onEnd);
+    return () => {
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+      window.removeEventListener("touchcancel", onEnd);
+    };
+  }, []);
   const onCellEnter = (r, c) => {
     if (!selStart) return;
     setSelection(normSel(selStart.r, selStart.c, r, c));
@@ -1195,7 +1235,7 @@ export default function App() {
                       cursor: "default",
                     }}
                     onMouseDown={(e) => onCellDown(ri, ci, e)}
-                    onTouchStart={(e) => onCellDown(ri, ci, e)}
+                    onTouchStart={(e) => onCellTouchStart(ri, ci, e)}
                     onMouseEnter={() => onCellEnter(ri, ci)}
                     onDoubleClick={(e) => {
                       e.stopPropagation();
