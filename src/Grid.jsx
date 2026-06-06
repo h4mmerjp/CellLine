@@ -112,6 +112,7 @@ export default function Grid({
           onCellHandleDown={onCellHandleDown}
           onCellHandleUp={onCellHandleUp}
           startResize={startResize}
+          selection={selection}
         />
 
         {/* メイン CSS Grid */}
@@ -131,9 +132,16 @@ export default function Grid({
                 gridColumn: 1,
                 gridRow: ri + 1,
                 position: "relative",
-                background: "#fafafa",
+                background:
+                  selection && ri >= selection.r1 && ri <= selection.r2
+                    ? "#e8f2ff"
+                    : "#fafafa",
                 zIndex: 3,
                 borderTop: `${lWeight(hLines[ri])}px solid ${lColor(hLines[ri])}`,
+                borderRight:
+                  selection && ri >= selection.r1 && ri <= selection.r2
+                    ? "2px solid #4a90d9"
+                    : undefined,
               }}
             >
               <div style={hLabelStyle}>

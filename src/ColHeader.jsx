@@ -31,6 +31,7 @@ export default function ColHeader({
   onCellHandleDown,
   onCellHandleUp,
   startResize,
+  selection,
 }) {
   return (
     <div style={{ display: "flex", alignItems: "flex-end" }}>
@@ -47,6 +48,14 @@ export default function ColHeader({
               position: "relative",
               height: 28,
               overflow: "visible",
+              background:
+                !isLast && selection && vi >= selection.c1 && vi <= selection.c2
+                  ? "#e8f2ff"
+                  : "transparent",
+              borderBottom:
+                !isLast && selection && vi >= selection.c1 && vi <= selection.c2
+                  ? "2px solid #4a90d9"
+                  : undefined,
             }}
           >
             {/* 縦線ビジュアル */}
