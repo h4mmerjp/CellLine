@@ -48,16 +48,26 @@ export default function ColHeader({
               position: "relative",
               height: 28,
               overflow: "visible",
-              background:
-                !isLast && selection && vi >= selection.c1 && vi <= selection.c2
-                  ? "#e8f2ff"
-                  : "transparent",
-              borderBottom:
-                !isLast && selection && vi >= selection.c1 && vi <= selection.c2
-                  ? "2px solid #4a90d9"
-                  : undefined,
             }}
           >
+            {/* 選択列インジケーター */}
+            {!isLast &&
+              selection &&
+              vi >= selection.c1 &&
+              vi <= selection.c2 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "#e8f2ff",
+                    borderLeft: "2px solid #4a90d9",
+                    borderRight: "2px solid #4a90d9",
+                    borderTop: "2px solid #4a90d9",
+                    zIndex: 1,
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
             {/* 縦線ビジュアル */}
             <div
               style={{

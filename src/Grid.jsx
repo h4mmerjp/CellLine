@@ -132,19 +132,25 @@ export default function Grid({
                 gridColumn: 1,
                 gridRow: ri + 1,
                 position: "relative",
-                background:
-                  selection && ri >= selection.r1 && ri <= selection.r2
-                    ? "#e8f2ff"
-                    : "#fafafa",
+                background: "#fafafa",
                 zIndex: 3,
                 borderTop: `${lWeight(hLines[ri])}px solid ${lColor(hLines[ri])}`,
-                borderRight:
-                  selection && ri >= selection.r1 && ri <= selection.r2
-                    ? "2px solid #4a90d9"
-                    : undefined,
               }}
             >
-              <div style={hLabelStyle}>
+              {/* 選択行インジケーター */}
+              {selection && ri >= selection.r1 && ri <= selection.r2 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "#e8f2ff",
+                    border: "2px solid #4a90d9",
+                    zIndex: 1,
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
+              <div style={{ ...hLabelStyle, background: "transparent" }}>
                 <LabelBox
                   value={hLines[ri]}
                   onChange={(v) =>
