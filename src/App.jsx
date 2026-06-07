@@ -27,6 +27,8 @@ export default function App() {
 
   const [editing, setEditing] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [copyDest, setCopyDest] = useState(null);
+  const [toastMsg, setToastMsg] = useState(null);
   const editingRef = useRef(editing);
   useEffect(() => {
     editingRef.current = editing;
@@ -76,9 +78,20 @@ export default function App() {
     onCellTouchStart,
     onCellEnter,
   } = useCellSelection(editingRef, cellTapRef);
-  // 毎レンダーで最新の selection を参照できるよう ref を更新
+  // selection が変わったとき（長押しドラッグで新選択）はコピー先をリセット
+  useEffect(() => {
+    setCopyDest(null);
+  }, [selection]);
+
+  // 毎レンダーで最新の selection / copyDest を参照できるよう ref を更新
   cellTapRef.current = (r, c) => {
-    if (selection) {
+    if (!selection) {
+      // 選択なし → タップでセル選択
+      setSelection({ r1: r, c1: c, r2: r, c2: c });
+      return;
+    }
+    if (copyDest && r === copyDest.r && c === copyDest.c) {
+      // 同じコピー先を再タップ → コピー実行
       dispatch({ type: "HISTORY_CHECKPOINT" });
       dispatch({
         type: "COPY_CELLS",
@@ -89,14 +102,15 @@ export default function App() {
         destR: r,
         destC: c,
       });
-      setSelection({
-        r1: r,
-        c1: c,
-        r2: r + (selection.r2 - selection.r1),
-        c2: c + (selection.c2 - selection.c1),
-      });
+      const rowSpan = selection.r2 - selection.r1;
+      const colSpan = selection.c2 - selection.c1;
+      setToastMsg("コピーしました");
+      setTimeout(() => setToastMsg(null), 2000);
+      setSelection({ r1: r, c1: c, r2: r + rowSpan, c2: c + colSpan });
+      setCopyDest(null);
     } else {
-      setSelection({ r1: r, c1: c, r2: r, c2: c });
+      // 1回目のタップ → コピー先を指定（まだコピーしない）
+      setCopyDest({ r, c });
     }
   };
 
@@ -210,6 +224,7 @@ export default function App() {
         if (!selStart) {
           setSelection(null);
           setEditing(null);
+          setCopyDest(null);
         }
       }}
     >
@@ -299,6 +314,25 @@ export default function App() {
                 : null}
           </span>
         )}
+        {copyDest && selection && (
+          <span style={{ fontSize: 11, color: "#f59e0b", fontWeight: 600 }}>
+            コピー先を選択中 — もう一度タップで上書き
+          </span>
+        )}
+        {toastMsg && (
+          <span
+            style={{
+              background: "#f0fdf4",
+              color: "#16a34a",
+              padding: "4px 10px",
+              borderRadius: 4,
+              fontSize: 11,
+              fontWeight: 600,
+            }}
+          >
+            {toastMsg}
+          </span>
+        )}
         {errorMsg && (
           <span
             style={{
@@ -335,6 +369,7 @@ export default function App() {
         present={present}
         dispatch={dispatch}
         selection={selection}
+        copyDest={copyDest}
         editing={editing}
         labelDrag={labelDrag}
         resizing={resizing}

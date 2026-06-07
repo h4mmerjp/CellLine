@@ -55,6 +55,7 @@ export default function Grid({
   present,
   dispatch,
   selection,
+  copyDest,
   editing,
   labelDrag,
   resizing,
@@ -293,6 +294,7 @@ export default function Grid({
               const { rowSpan, colSpan } = m;
               const isSel = inSel(ri, ci);
               const isEdit = editing?.r === ri && editing?.c === ci;
+              const isCopyDest = copyDest?.r === ri && copyDest?.c === ci;
               const isDragRow =
                 cellReorder?.type === "h" && cellReorder.to === ri;
               const isDragCol =
@@ -328,13 +330,19 @@ export default function Grid({
                           : "#fff",
                     boxSizing: "border-box",
                     position: "relative",
-                    outline: isSel ? "3px solid #4a90d9" : "none",
+                    outline: isSel
+                      ? "3px solid #4a90d9"
+                      : isCopyDest
+                        ? "3px dashed #f59e0b"
+                        : "none",
                     outlineOffset: -1,
                     boxShadow: isSel
                       ? "0 0 0 2px #4a90d9"
-                      : isDragRow || isDragCol
-                        ? "inset 0 0 0 2px #4a90d9"
-                        : "none",
+                      : isCopyDest
+                        ? "0 0 0 2px #f59e0b"
+                        : isDragRow || isDragCol
+                          ? "inset 0 0 0 2px #4a90d9"
+                          : "none",
                     overflow: "hidden",
                     cursor: "default",
                     userSelect: "none",
