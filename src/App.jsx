@@ -94,7 +94,6 @@ export default function App() {
     if (copiedRef.current) {
       dispatch({ type: "HISTORY_CHECKPOINT" });
       dispatch({ type: "PASTE_CELLS", r, c, data: copiedRef.current.data });
-      setCopied(null);
       setSelection({ r1: r, c1: c, r2: r, c2: c });
       return true;
     }
@@ -109,11 +108,6 @@ export default function App() {
     }
     return false;
   };
-
-  // 長押しドラッグ選択開始でコピー状態を解除
-  useEffect(() => {
-    if (selStart) setCopied(null);
-  }, [selStart]);
 
   const { cellReorder, onCellHandleDown, onCellHandleUp } = useCellReorder(
     dispatch,
