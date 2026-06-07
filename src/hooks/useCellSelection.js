@@ -16,6 +16,7 @@ export function useCellSelection(editingRef, onTapRef) {
   const cellTouchRef = useRef(null);
   const longPressTimerRef = useRef(null);
   const selDragActiveRef = useRef(false);
+  const touchHandledRef = useRef(false); // タッチ処理済みフラグ（合成mousedownをスキップ）
 
   useEffect(() => {
     selStartRef.current = selStart;
@@ -25,6 +26,10 @@ export function useCellSelection(editingRef, onTapRef) {
   }, [selection]);
 
   const onCellDown = (r, c, e) => {
+    if (touchHandledRef.current) {
+      touchHandledRef.current = false;
+      return; // タッチ後の合成mousedownをスキップ
+    }
     if (editingRef.current?.r === r && editingRef.current?.c === c) return;
     e.preventDefault();
     e.stopPropagation();
@@ -48,6 +53,7 @@ export function useCellSelection(editingRef, onTapRef) {
 
   const onCellTouchStart = (r, c, e) => {
     if (editingRef.current?.r === r && editingRef.current?.c === c) return;
+    touchHandledRef.current = true; // 後続の合成mousedownを無効化
     const t = e.touches[0];
     cellTouchRef.current = { r, c, x: t.clientX, y: t.clientY };
     selDragActiveRef.current = false;

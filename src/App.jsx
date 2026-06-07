@@ -225,6 +225,7 @@ export default function App() {
         if (!selStart) {
           setSelection(null);
           setEditing(null);
+          setCopied(null);
         }
       }}
     >
