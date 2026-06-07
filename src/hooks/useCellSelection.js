@@ -1,66 +1,76 @@
 import { useState, useRef, useEffect } from "react";
 
-const normSel = (r1, c1, r2, c2) => ({
-  r1: Math.min(r1, r2),
-  r2: Math.max(r1, r2),
-  c1: Math.min(c1, c2),
-  c2: Math.max(c1, c2),
-});
+export const selKey = (r, c) => `${r},${c}`;
+
+const addRect = (base, r1, c1, r2, c2) => {
+  const next = new Set(base);
+  for (let r = Math.min(r1, r2); r <= Math.max(r1, r2); r++)
+    for (let c = Math.min(c1, c2); c <= Math.max(c1, c2); c++)
+      next.add(selKey(r, c));
+  return next;
+};
 
 export function useCellSelection(editingRef) {
-  const [selection, setSelection] = useState(null);
+  const [selection, _setSelection] = useState(null); // null | Set<"r,c">
   const [selStart, setSelStart] = useState(null);
-  const selStartRef = useRef(selStart);
-  const cellTouchTimerRef = useRef(null);
-  const cellTouchRef = useRef(null);
+  const selRef = useRef(null); // mirrors selection to avoid stale closure
+  const selStartRef = useRef(null);
+  const timerRef = useRef(null);
+  const touchStartRef = useRef(null); // { r, c, x, y }
+  const preDragRef = useRef(null); // selection snapshot at drag start
 
-  useEffect(() => {
-    selStartRef.current = selStart;
-  }, [selStart]);
-
-  const onCellDown = (r, c, e) => {
-    if (editingRef.current?.r === r && editingRef.current?.c === c) return;
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.shiftKey && selection) {
-      setSelection(normSel(selection.r1, selection.c1, r, c));
-    } else {
-      setSelStart({ r, c });
-      setSelection(normSel(r, c, r, c));
-    }
+  const setSelection = (val) => {
+    const next = typeof val === "function" ? val(selRef.current) : val;
+    selRef.current = next;
+    _setSelection(next);
   };
 
-  const onCellTouchStart = (r, c, e) => {
-    if (editingRef.current?.r === r && editingRef.current?.c === c) return;
-    const t = e.touches[0];
-    cellTouchRef.current = { r, c, x: t.clientX, y: t.clientY };
-    cellTouchTimerRef.current = setTimeout(() => {
-      cellTouchRef.current = null;
-      setSelStart({ r, c });
-      setSelection(normSel(r, c, r, c));
-    }, 400);
-  };
-
-  // スクロール検知でタッチ長押しをキャンセル
+  // always-on: touch を一元管理（race condition 回避）
   useEffect(() => {
     const onMove = (e) => {
-      if (!cellTouchRef.current) return;
-      const t = e.touches[0];
-      if (
-        Math.hypot(
-          t.clientX - cellTouchRef.current.x,
-          t.clientY - cellTouchRef.current.y,
-        ) > 10
-      ) {
-        clearTimeout(cellTouchTimerRef.current);
-        cellTouchRef.current = null;
+      // 長押し待機中: 10px 以上動いたらキャンセル
+      if (touchStartRef.current) {
+        const t = e.touches[0];
+        if (
+          Math.hypot(
+            t.clientX - touchStartRef.current.x,
+            t.clientY - touchStartRef.current.y,
+          ) > 10
+        ) {
+          clearTimeout(timerRef.current);
+          touchStartRef.current = null;
+        }
+      }
+      // 選択ドラッグ中: pre-drag ベース + アンカーから指下セルの矩形を追加
+      if (selStartRef.current) {
+        if (e.cancelable) e.preventDefault();
+        const t = e.touches[0];
+        const cell = document
+          .elementFromPoint(t.clientX, t.clientY)
+          ?.closest("[data-row]");
+        if (cell) {
+          const dr = +cell.dataset.row;
+          const dc = +cell.dataset.col;
+          const { r: sr, c: sc } = selStartRef.current;
+          setSelection(
+            addRect(preDragRef.current ?? new Set(), sr, sc, dr, dc),
+          );
+        }
       }
     };
     const onEnd = () => {
-      clearTimeout(cellTouchTimerRef.current);
-      cellTouchRef.current = null;
+      clearTimeout(timerRef.current);
+      // 既存選択あり＋タップ（長押しなし・移動なし）→ そのセルを追加
+      if (touchStartRef.current && selRef.current) {
+        const { r, c } = touchStartRef.current;
+        setSelection(addRect(selRef.current, r, c, r, c));
+      }
+      touchStartRef.current = null;
+      selStartRef.current = null;
+      preDragRef.current = null;
+      setSelStart(null);
     };
-    window.addEventListener("touchmove", onMove, { passive: true });
+    window.addEventListener("touchmove", onMove, { passive: false });
     window.addEventListener("touchend", onEnd);
     window.addEventListener("touchcancel", onEnd);
     return () => {
@@ -68,38 +78,54 @@ export function useCellSelection(editingRef) {
       window.removeEventListener("touchend", onEnd);
       window.removeEventListener("touchcancel", onEnd);
     };
-  }, []);
+  }, []); // eslint-disable-line
 
-  const onCellEnter = (r, c) => {
-    if (!selStart) return;
-    setSelection(normSel(selStart.r, selStart.c, r, c));
-  };
-
-  // 選択拡張（マウス解放 / タッチスワイプ）
+  // マウス解放で選択確定
   useEffect(() => {
     if (!selStart) return;
-    const up = () => setSelStart(null);
+    const up = () => {
+      selStartRef.current = null;
+      preDragRef.current = null;
+      setSelStart(null);
+    };
     window.addEventListener("mouseup", up);
-    window.addEventListener("touchend", up);
-    const onTouch = (e) => {
-      if (!selStartRef.current) return;
-      if (e.cancelable) e.preventDefault();
-      const t = e.touches[0];
-      const cell = document
-        .elementFromPoint(t.clientX, t.clientY)
-        ?.closest("[data-row]");
-      if (cell) {
-        const { r: sr, c: sc } = selStartRef.current;
-        setSelection(normSel(sr, sc, +cell.dataset.row, +cell.dataset.col));
-      }
-    };
-    window.addEventListener("touchmove", onTouch, { passive: false });
-    return () => {
-      window.removeEventListener("mouseup", up);
-      window.removeEventListener("touchend", up);
-      window.removeEventListener("touchmove", onTouch);
-    };
+    return () => window.removeEventListener("mouseup", up);
   }, [selStart]);
+
+  const onCellDown = (r, c, e) => {
+    if (editingRef.current?.r === r && editingRef.current?.c === c) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.shiftKey && selStartRef.current) {
+      const { r: sr, c: sc } = selStartRef.current;
+      setSelection(addRect(new Set(), sr, sc, r, c));
+    } else {
+      selStartRef.current = { r, c };
+      setSelStart({ r, c });
+      setSelection(new Set([selKey(r, c)]));
+    }
+  };
+
+  const onCellTouchStart = (r, c, e) => {
+    if (editingRef.current?.r === r && editingRef.current?.c === c) return;
+    const t = e.touches[0];
+    touchStartRef.current = { r, c, x: t.clientX, y: t.clientY };
+    timerRef.current = setTimeout(() => {
+      touchStartRef.current = null;
+      selStartRef.current = { r, c };
+      setSelStart({ r, c });
+      // pre-drag: 現在の選択を保存してからアンカーセルを追加
+      preDragRef.current = selRef.current ?? new Set();
+      setSelection(addRect(preDragRef.current, r, c, r, c));
+    }, 400);
+  };
+
+  // マウスドラッグで範囲選択
+  const onCellEnter = (r, c) => {
+    if (!selStartRef.current) return;
+    const { r: sr, c: sc } = selStartRef.current;
+    setSelection(addRect(new Set(), sr, sc, r, c));
+  };
 
   return {
     selection,
