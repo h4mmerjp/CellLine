@@ -112,7 +112,6 @@ export default function Grid({
           onCellHandleDown={onCellHandleDown}
           onCellHandleUp={onCellHandleUp}
           startResize={startResize}
-          selection={selection}
         />
 
         {/* メイン CSS Grid */}
@@ -137,32 +136,6 @@ export default function Grid({
                 borderTop: `${lWeight(hLines[ri])}px solid ${lColor(hLines[ri])}`,
               }}
             >
-              {/* 選択行インジケーター */}
-              {selection && ri >= selection.r1 && ri <= selection.r2 && (
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background: "#e8f2ff",
-                    border: "2px solid #4a90d9",
-                    zIndex: 1,
-                    pointerEvents: "none",
-                  }}
-                />
-              )}
-              {/* 行ドラッグ中インジケーター */}
-              {cellReorder?.type === "h" && cellReorder.to === ri && (
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background: "#dbeafe",
-                    border: "2px dashed #4a90d9",
-                    zIndex: 1,
-                    pointerEvents: "none",
-                  }}
-                />
-              )}
               <div style={{ ...hLabelStyle, background: "transparent" }}>
                 <LabelBox
                   value={hLines[ri]}

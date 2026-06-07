@@ -31,7 +31,6 @@ export default function ColHeader({
   onCellHandleDown,
   onCellHandleUp,
   startResize,
-  selection,
 }) {
   return (
     <div style={{ display: "flex", alignItems: "flex-end" }}>
@@ -50,39 +49,6 @@ export default function ColHeader({
               overflow: "visible",
             }}
           >
-            {/* 選択列インジケーター */}
-            {!isLast &&
-              selection &&
-              vi >= selection.c1 &&
-              vi <= selection.c2 && (
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background: "#e8f2ff",
-                    borderLeft: "2px solid #4a90d9",
-                    borderRight: "2px solid #4a90d9",
-                    borderTop: "2px solid #4a90d9",
-                    zIndex: 1,
-                    pointerEvents: "none",
-                  }}
-                />
-              )}
-            {/* 列ドラッグ中インジケーター */}
-            {!isLast && cellReorder?.type === "v" && cellReorder.to === vi && (
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background: "#dbeafe",
-                  borderLeft: "2px dashed #4a90d9",
-                  borderRight: "2px dashed #4a90d9",
-                  borderTop: "2px dashed #4a90d9",
-                  zIndex: 2,
-                  pointerEvents: "none",
-                }}
-              />
-            )}
             {/* 縦線ビジュアル */}
             <div
               style={{
