@@ -325,6 +325,9 @@ export default function Grid({
                         : "none",
                     overflow: "hidden",
                     cursor: "default",
+                    userSelect: "none",
+                    WebkitUserSelect: "none",
+                    WebkitTouchCallout: "none",
                   }}
                   onMouseDown={(e) => onCellDown(ri, ci, e)}
                   onTouchStart={(e) => onCellTouchStart(ri, ci, e)}
