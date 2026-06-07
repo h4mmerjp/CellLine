@@ -150,6 +150,19 @@ export default function Grid({
                   }}
                 />
               )}
+              {/* 行ドラッグ中インジケーター */}
+              {cellReorder?.type === "h" && cellReorder.to === ri && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "#dbeafe",
+                    border: "2px dashed #4a90d9",
+                    zIndex: 1,
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
               <div style={{ ...hLabelStyle, background: "transparent" }}>
                 <LabelBox
                   value={hLines[ri]}
@@ -309,6 +322,10 @@ export default function Grid({
               const { rowSpan, colSpan } = m;
               const isSel = inSel(ri, ci);
               const isEdit = editing?.r === ri && editing?.c === ci;
+              const isDragRow =
+                cellReorder?.type === "h" && cellReorder.to === ri;
+              const isDragCol =
+                cellReorder?.type === "v" && cellReorder.to === ci;
               const bTop = `${lWeight(hLines[ri])}px solid ${lColor(hLines[ri])}`;
               const bLeft = `${lWeight(vLines[ci])}px solid ${lColor(vLines[ci])}`;
               const bRight =
@@ -331,12 +348,22 @@ export default function Grid({
                     borderLeft: bLeft,
                     borderRight: bRight,
                     borderBottom: bBottom,
-                    background: isEdit ? "#fffde8" : isSel ? "#e8f2ff" : "#fff",
+                    background: isEdit
+                      ? "#fffde8"
+                      : isSel
+                        ? "#e8f2ff"
+                        : isDragRow || isDragCol
+                          ? "#dbeafe"
+                          : "#fff",
                     boxSizing: "border-box",
                     position: "relative",
                     outline: isSel ? "3px solid #4a90d9" : "none",
                     outlineOffset: -1,
-                    boxShadow: isSel ? "0 0 0 2px #4a90d9" : "none",
+                    boxShadow: isSel
+                      ? "0 0 0 2px #4a90d9"
+                      : isDragRow || isDragCol
+                        ? "inset 0 0 0 2px #4a90d9"
+                        : "none",
                     overflow: "hidden",
                     cursor: "default",
                   }}

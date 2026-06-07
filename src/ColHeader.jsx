@@ -68,6 +68,21 @@ export default function ColHeader({
                   }}
                 />
               )}
+            {/* 列ドラッグ中インジケーター */}
+            {!isLast && cellReorder?.type === "v" && cellReorder.to === vi && (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "#dbeafe",
+                  borderLeft: "2px dashed #4a90d9",
+                  borderRight: "2px dashed #4a90d9",
+                  borderTop: "2px dashed #4a90d9",
+                  zIndex: 2,
+                  pointerEvents: "none",
+                }}
+              />
+            )}
             {/* 縦線ビジュアル */}
             <div
               style={{
