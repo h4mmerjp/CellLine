@@ -332,6 +332,7 @@ export default function Grid({
                   onMouseDown={(e) => onCellDown(ri, ci, e)}
                   onTouchStart={(e) => onCellTouchStart(ri, ci, e)}
                   onMouseEnter={() => onCellEnter(ri, ci)}
+                  onClick={(e) => e.stopPropagation()}
                   onDoubleClick={(e) => {
                     e.stopPropagation();
                     dispatch({ type: "HISTORY_CHECKPOINT" });
