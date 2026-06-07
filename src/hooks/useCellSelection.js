@@ -53,15 +53,22 @@ export function useCellSelection(editingRef, onTapRef) {
 
   const onCellTouchStart = (r, c, e) => {
     if (editingRef.current?.r === r && editingRef.current?.c === c) return;
-    touchHandledRef.current = true; // 後続の合成mousedownを無効化
+    touchHandledRef.current = true;
     const t = e.touches[0];
+    const sel = selectionRef.current;
+    const isInCurrentSel =
+      sel && r >= sel.r1 && r <= sel.r2 && c >= sel.c1 && c <= sel.c2;
     cellTouchRef.current = { r, c, x: t.clientX, y: t.clientY };
     selDragActiveRef.current = false;
-    longPressTimerRef.current = setTimeout(() => {
-      selDragActiveRef.current = true;
-      setSelStart({ r, c });
-      setSelection(normSel(r, c, r, c));
-    }, 400);
+    if (!isInCurrentSel) {
+      // 選択外：長押しでドラッグ選択を開始
+      longPressTimerRef.current = setTimeout(() => {
+        selDragActiveRef.current = true;
+        setSelStart({ r, c });
+        setSelection(normSel(r, c, r, c));
+      }, 400);
+    }
+    // 選択内：タイマーなし。指を離したタイミングでコピー／ペーストを判定
   };
 
   useEffect(() => {
