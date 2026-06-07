@@ -323,22 +323,24 @@ export default function Grid({
                     borderBottom: bBottom,
                     background: isEdit
                       ? "#fffde8"
-                      : isSel
+                      : isCopyDest
                         ? "#e8f2ff"
-                        : isDragRow || isDragCol
-                          ? "#dbeafe"
-                          : "#fff",
+                        : isSel
+                          ? "#fff7ed"
+                          : isDragRow || isDragCol
+                            ? "#dbeafe"
+                            : "#fff",
                     boxSizing: "border-box",
                     position: "relative",
-                    outline: isSel
+                    outline: isCopyDest
                       ? "3px solid #4a90d9"
-                      : isCopyDest
+                      : isSel
                         ? "3px dashed #f59e0b"
                         : "none",
                     outlineOffset: -1,
-                    boxShadow: isSel
+                    boxShadow: isCopyDest
                       ? "0 0 0 2px #4a90d9"
-                      : isCopyDest
+                      : isSel
                         ? "0 0 0 2px #f59e0b"
                         : isDragRow || isDragCol
                           ? "inset 0 0 0 2px #4a90d9"
