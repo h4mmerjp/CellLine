@@ -30,6 +30,7 @@ export default function App() {
   const [copied, setCopied] = useState(null); // { r1,c1,r2,c2, data:string[][] }
   const [toastMsg, setToastMsg] = useState(null);
   const copiedRef = useRef(null);
+  const copyTimerRef = useRef(null);
   const editingRef = useRef(editing);
   useEffect(() => {
     editingRef.current = editing;
@@ -37,6 +38,10 @@ export default function App() {
   useEffect(() => {
     copiedRef.current = copied;
   }, [copied]);
+  // 編集モード開始時にコピー予約をキャンセル（ダブルタップ対策）
+  useEffect(() => {
+    if (editing) clearTimeout(copyTimerRef.current);
+  }, [editing]);
 
   useEffect(() => {
     const id = setTimeout(
@@ -91,6 +96,7 @@ export default function App() {
 
   // タップ時のコピー／ペースト／通常選択ロジック（毎レンダーで最新の値を参照）
   onCellTapRef.current = (r, c, currentSel, isInSel) => {
+    clearTimeout(copyTimerRef.current); // 直前のコピー予約を常にキャンセル
     if (copiedRef.current) {
       dispatch({ type: "HISTORY_CHECKPOINT" });
       dispatch({ type: "PASTE_CELLS", r, c, data: copiedRef.current.data });
@@ -98,12 +104,17 @@ export default function App() {
       return true;
     }
     if (isInSel && currentSel) {
+      // ダブルタップと区別するため280ms後にコピー実行
+      // 編集モードが始まった場合はキャンセル（useEffect[editing]で clearTimeout）
       const { r1, c1, r2, c2 } = currentSel;
       const data = present.cells
         .slice(r1, r2 + 1)
         .map((row) => row.slice(c1, c2 + 1));
-      setCopied({ r1, c1, r2, c2, data });
-      showToast("コピーしました");
+      copyTimerRef.current = setTimeout(() => {
+        if (editingRef.current) return;
+        setCopied({ r1, c1, r2, c2, data });
+        showToast("コピーしました");
+      }, 280);
       return true;
     }
     return false;
