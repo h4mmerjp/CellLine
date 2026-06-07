@@ -133,7 +133,6 @@ export default function Grid({
                 position: "relative",
                 background: "#fafafa",
                 zIndex: 3,
-                borderTop: `${lWeight(hLines[ri])}px solid ${lColor(hLines[ri])}`,
               }}
             >
               <div style={{ ...hLabelStyle, background: "transparent" }}>
@@ -225,7 +224,6 @@ export default function Grid({
               position: "relative",
               background: "#fafafa",
               zIndex: 3,
-              borderTop: `${lWeight(hLines[rows])}px solid ${lColor(hLines[rows])}`,
             }}
           >
             <div style={hLabelStyle}>
