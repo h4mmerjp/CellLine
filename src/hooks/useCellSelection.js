@@ -7,17 +7,22 @@ const normSel = (r1, c1, r2, c2) => ({
   c2: Math.max(c1, c2),
 });
 
+// onTapRef.current(r, c, currentSel, isInSel) → return true if handled (copy/paste)
 export function useCellSelection(editingRef, onTapRef) {
   const [selection, setSelection] = useState(null);
   const [selStart, setSelStart] = useState(null);
   const selStartRef = useRef(selStart);
-  const cellTouchRef = useRef(null); // { r, c, x, y } タッチ開始情報
+  const selectionRef = useRef(selection);
+  const cellTouchRef = useRef(null);
   const longPressTimerRef = useRef(null);
-  const selDragActiveRef = useRef(false); // 長押しドラッグ中フラグ
+  const selDragActiveRef = useRef(false);
 
   useEffect(() => {
     selStartRef.current = selStart;
   }, [selStart]);
+  useEffect(() => {
+    selectionRef.current = selection;
+  }, [selection]);
 
   const onCellDown = (r, c, e) => {
     if (editingRef.current?.r === r && editingRef.current?.c === c) return;
@@ -25,10 +30,20 @@ export function useCellSelection(editingRef, onTapRef) {
     e.stopPropagation();
     if (e.shiftKey && selection) {
       setSelection(normSel(selection.r1, selection.c1, r, c));
-    } else {
-      setSelStart({ r, c });
-      setSelection(normSel(r, c, r, c));
+      return;
     }
+    if (onTapRef?.current) {
+      const isInSel =
+        selection &&
+        r >= selection.r1 &&
+        r <= selection.r2 &&
+        c >= selection.c1 &&
+        c <= selection.c2;
+      const handled = onTapRef.current(r, c, selection, isInSel);
+      if (handled) return;
+    }
+    setSelStart({ r, c });
+    setSelection(normSel(r, c, r, c));
   };
 
   const onCellTouchStart = (r, c, e) => {
@@ -37,7 +52,6 @@ export function useCellSelection(editingRef, onTapRef) {
     cellTouchRef.current = { r, c, x: t.clientX, y: t.clientY };
     selDragActiveRef.current = false;
     longPressTimerRef.current = setTimeout(() => {
-      // 長押し成立 → ドラッグ選択モード開始
       selDragActiveRef.current = true;
       setSelStart({ r, c });
       setSelection(normSel(r, c, r, c));
@@ -49,7 +63,6 @@ export function useCellSelection(editingRef, onTapRef) {
       if (!cellTouchRef.current) return;
       const t = e.touches[0];
       if (selDragActiveRef.current) {
-        // ドラッグ選択モード：スクロールを抑止して選択範囲を拡張
         if (e.cancelable) e.preventDefault();
         const cell = document
           .elementFromPoint(t.clientX, t.clientY)
@@ -64,7 +77,6 @@ export function useCellSelection(editingRef, onTapRef) {
           t.clientY - cellTouchRef.current.y,
         ) > 10
       ) {
-        // スクロール検知 → 長押しタイマーをキャンセル
         clearTimeout(longPressTimerRef.current);
         cellTouchRef.current = null;
       }
@@ -72,10 +84,13 @@ export function useCellSelection(editingRef, onTapRef) {
     const onEnd = () => {
       clearTimeout(longPressTimerRef.current);
       if (!selDragActiveRef.current && cellTouchRef.current) {
-        // タップ → コールバックがあればそちらに委譲、なければシングル選択
         const { r, c } = cellTouchRef.current;
+        const sel = selectionRef.current;
+        const isInSel =
+          sel && r >= sel.r1 && r <= sel.r2 && c >= sel.c1 && c <= sel.c2;
         if (onTapRef?.current) {
-          onTapRef.current(r, c);
+          const handled = onTapRef.current(r, c, sel, isInSel);
+          if (!handled) setSelection(normSel(r, c, r, c));
         } else {
           setSelection(normSel(r, c, r, c));
         }
@@ -106,7 +121,6 @@ export function useCellSelection(editingRef, onTapRef) {
     setSelection(normSel(selStart.r, selStart.c, r, c));
   };
 
-  // マウスドラッグ選択の終了
   useEffect(() => {
     if (!selStart) return;
     const up = () => setSelStart(null);

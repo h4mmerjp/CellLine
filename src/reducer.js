@@ -276,19 +276,20 @@ export const gridReducer = (state, action) => {
         merges: reorderMerges(state.merges, "v", f, t),
       };
     }
-    case "COPY_CELLS": {
-      const { srcR1, srcC1, srcR2, srcC2, destR, destC } = action;
-      const newCells = state.cells.map((row) => [...row]);
-      for (let dr = 0; dr <= srcR2 - srcR1; dr++) {
-        for (let dc = 0; dc <= srcC2 - srcC1; dc++) {
-          const tr = destR + dr;
-          const tc = destC + dc;
-          if (tr < newCells.length && tc < newCells[0].length) {
-            newCells[tr][tc] = state.cells[srcR1 + dr][srcC1 + dc];
-          }
-        }
-      }
-      return { ...state, cells: newCells };
+    case "PASTE_CELLS": {
+      const { r: sr, c: sc, data } = action;
+      return {
+        ...state,
+        cells: state.cells.map((row, ri) => {
+          const di = ri - sr;
+          if (di < 0 || di >= data.length) return row;
+          return row.map((cell, ci) => {
+            const dj = ci - sc;
+            if (dj < 0 || dj >= (data[di]?.length ?? 0)) return cell;
+            return data[di][dj];
+          });
+        }),
+      };
     }
     case "LOAD":
       return {

@@ -55,8 +55,8 @@ export default function Grid({
   present,
   dispatch,
   selection,
-  copyDest,
   editing,
+  copied,
   labelDrag,
   resizing,
   onCellDown,
@@ -293,8 +293,13 @@ export default function Grid({
               const m = getMerge(ri, ci) ?? { rowSpan: 1, colSpan: 1 };
               const { rowSpan, colSpan } = m;
               const isSel = inSel(ri, ci);
+              const isCopied =
+                !!copied &&
+                ri >= copied.r1 &&
+                ri <= copied.r2 &&
+                ci >= copied.c1 &&
+                ci <= copied.c2;
               const isEdit = editing?.r === ri && editing?.c === ci;
-              const isCopyDest = copyDest?.r === ri && copyDest?.c === ci;
               const isDragRow =
                 cellReorder?.type === "h" && cellReorder.to === ri;
               const isDragCol =
@@ -323,28 +328,20 @@ export default function Grid({
                     borderBottom: bBottom,
                     background: isEdit
                       ? "#fffde8"
-                      : isCopyDest
+                      : isSel
                         ? "#e8f2ff"
-                        : isSel
-                          ? "#fff7ed"
-                          : isDragRow || isDragCol
-                            ? "#dbeafe"
-                            : "#fff",
+                        : isDragRow || isDragCol
+                          ? "#dbeafe"
+                          : "#fff",
                     boxSizing: "border-box",
                     position: "relative",
-                    outline: isCopyDest
-                      ? "3px solid #4a90d9"
-                      : isSel
-                        ? "3px dashed #f59e0b"
-                        : "none",
+                    outline: isSel ? "3px solid #4a90d9" : "none",
                     outlineOffset: -1,
-                    boxShadow: isCopyDest
+                    boxShadow: isSel
                       ? "0 0 0 2px #4a90d9"
-                      : isSel
-                        ? "0 0 0 2px #f59e0b"
-                        : isDragRow || isDragCol
-                          ? "inset 0 0 0 2px #4a90d9"
-                          : "none",
+                      : isDragRow || isDragCol
+                        ? "inset 0 0 0 2px #4a90d9"
+                        : "none",
                     overflow: "hidden",
                     cursor: "default",
                     userSelect: "none",
@@ -362,6 +359,17 @@ export default function Grid({
                     setSelection(normSel(ri, ci, ri, ci));
                   }}
                 >
+                  {isCopied && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        border: "2px dashed #f97316",
+                        zIndex: 3,
+                        pointerEvents: "none",
+                      }}
+                    />
+                  )}
                   {(rowSpan > 1 || colSpan > 1) && (
                     <div
                       style={{
