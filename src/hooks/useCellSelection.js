@@ -7,7 +7,7 @@ const normSel = (r1, c1, r2, c2) => ({
   c2: Math.max(c1, c2),
 });
 
-export function useCellSelection(editingRef) {
+export function useCellSelection(editingRef, onTapRef) {
   const [selection, setSelection] = useState(null);
   const [selStart, setSelStart] = useState(null);
   const selStartRef = useRef(selStart);
@@ -72,9 +72,13 @@ export function useCellSelection(editingRef) {
     const onEnd = () => {
       clearTimeout(longPressTimerRef.current);
       if (!selDragActiveRef.current && cellTouchRef.current) {
-        // タップ → シングル選択
+        // タップ → コールバックがあればそちらに委譲、なければシングル選択
         const { r, c } = cellTouchRef.current;
-        setSelection(normSel(r, c, r, c));
+        if (onTapRef?.current) {
+          onTapRef.current(r, c);
+        } else {
+          setSelection(normSel(r, c, r, c));
+        }
       }
       if (selDragActiveRef.current) setSelStart(null);
       cellTouchRef.current = null;

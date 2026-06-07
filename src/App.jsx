@@ -67,6 +67,7 @@ export default function App() {
     colWidths,
     rowHeights,
   );
+  const cellTapRef = useRef(null);
   const {
     selection,
     setSelection,
@@ -74,7 +75,30 @@ export default function App() {
     onCellDown,
     onCellTouchStart,
     onCellEnter,
-  } = useCellSelection(editingRef);
+  } = useCellSelection(editingRef, cellTapRef);
+  // 毎レンダーで最新の selection を参照できるよう ref を更新
+  cellTapRef.current = (r, c) => {
+    if (selection) {
+      dispatch({ type: "HISTORY_CHECKPOINT" });
+      dispatch({
+        type: "COPY_CELLS",
+        srcR1: selection.r1,
+        srcC1: selection.c1,
+        srcR2: selection.r2,
+        srcC2: selection.c2,
+        destR: r,
+        destC: c,
+      });
+      setSelection({
+        r1: r,
+        c1: c,
+        r2: r + (selection.r2 - selection.r1),
+        c2: c + (selection.c2 - selection.c1),
+      });
+    } else {
+      setSelection({ r1: r, c1: c, r2: r, c2: c });
+    }
+  };
 
   const { cellReorder, onCellHandleDown, onCellHandleUp } = useCellReorder(
     dispatch,
@@ -83,38 +107,22 @@ export default function App() {
   );
 
   // セル結合
-  const selCells = selection
-    ? [...selection].map((k) => {
-        const [r, c] = k.split(",").map(Number);
-        return { r, c };
-      })
-    : [];
-  const selIsMulti = selCells.length > 1;
-  const selIsSingle = selCells.length === 1;
-  const singleCell = selIsSingle ? selCells[0] : null;
-  const singleMerge = singleCell
-    ? (merges.find((m) => m.r === singleCell.r && m.c === singleCell.c) ?? null)
+  const selIsMulti =
+    selection && (selection.r2 > selection.r1 || selection.c2 > selection.c1);
+  const selIsSingle =
+    selection && selection.r1 === selection.r2 && selection.c1 === selection.c2;
+  const singleMerge = selIsSingle
+    ? (merges.find((m) => m.r === selection.r1 && m.c === selection.c1) ?? null)
     : null;
-  // 選択セルが欠けのない矩形を形成しているときのみ結合可能
-  const canMerge = (() => {
-    if (selCells.length < 2) return false;
-    const r1 = Math.min(...selCells.map((x) => x.r));
-    const r2 = Math.max(...selCells.map((x) => x.r));
-    const c1 = Math.min(...selCells.map((x) => x.c));
-    const c2 = Math.max(...selCells.map((x) => x.c));
-    return selCells.length === (r2 - r1 + 1) * (c2 - c1 + 1);
-  })();
+  const canMerge = !!selIsMulti;
   const canUnmerge = !!(
     singleMerge &&
     (singleMerge.rowSpan > 1 || singleMerge.colSpan > 1)
   );
 
   const doMerge = () => {
-    if (!canMerge) return;
-    const r1 = Math.min(...selCells.map((x) => x.r));
-    const r2 = Math.max(...selCells.map((x) => x.r));
-    const c1 = Math.min(...selCells.map((x) => x.c));
-    const c2 = Math.max(...selCells.map((x) => x.c));
+    if (!canMerge || !selection) return;
+    const { r1, c1, r2, c2 } = selection;
     const hasExisting = merges.some((m) => {
       const mR2 = m.r + m.rowSpan - 1,
         mC2 = m.c + m.colSpan - 1;
@@ -128,16 +136,16 @@ export default function App() {
       return;
     }
     dispatch({ type: "MERGE", r1, c1, r2, c2 });
-    setSelection(new Set([`${r1},${c1}`]));
+    setSelection({ r1, c1, r2: r1, c2: c1 });
   };
   const doUnmerge = () => {
-    if (!canUnmerge || !singleCell) return;
-    if (!merges.find((m) => m.r === singleCell.r && m.c === singleCell.c)) {
+    if (!canUnmerge || !selection) return;
+    if (!merges.find((m) => m.r === selection.r1 && m.c === selection.c1)) {
       setErrorMsg("選択範囲に一致する結合セルがありません");
       setTimeout(() => setErrorMsg(null), 3000);
       return;
     }
-    dispatch({ type: "UNMERGE", r: singleCell.r, c: singleCell.c });
+    dispatch({ type: "UNMERGE", r: selection.r1, c: selection.c1 });
   };
 
   // 保存 / 読込
@@ -285,9 +293,7 @@ export default function App() {
         {selection && (
           <span style={{ fontSize: 11, color: "#999" }}>
             {selIsMulti
-              ? canMerge
-                ? `${selCells.length}セル選択中（結合可能）`
-                : `${selCells.length}セル選択中（矩形でないため結合不可）`
+              ? `${selection.r2 - selection.r1 + 1}行 × ${selection.c2 - selection.c1 + 1}列 選択中`
               : canUnmerge
                 ? `結合セル (${singleMerge.rowSpan}×${singleMerge.colSpan})`
                 : null}
