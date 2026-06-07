@@ -7,6 +7,13 @@ const lWeight = (l) => (l ? 2 : 1);
 const GUTTER = 110;
 const LAST_ROW_H = 20;
 
+const normSel = (r1, c1, r2, c2) => ({
+  r1: Math.min(r1, r2),
+  r2: Math.max(r1, r2),
+  c1: Math.min(c1, c2),
+  c2: Math.max(c1, c2),
+});
+
 const hLabelStyle = {
   position: "absolute",
   top: 0,
@@ -77,7 +84,12 @@ export default function Grid({
         m.c <= c &&
         c < m.c + m.colSpan,
     );
-  const inSel = (r, c) => !!selection && selection.has(`${r},${c}`);
+  const inSel = (r, c) =>
+    !!selection &&
+    r >= selection.r1 &&
+    r <= selection.r2 &&
+    c >= selection.c1 &&
+    c <= selection.c2;
 
   const gridTCols = `${GUTTER}px ${colWidths.map((w) => `${w}px`).join(" ")}`;
   const gridTRows = [
@@ -325,19 +337,15 @@ export default function Grid({
                         : "none",
                     overflow: "hidden",
                     cursor: "default",
-                    userSelect: "none",
-                    WebkitUserSelect: "none",
-                    WebkitTouchCallout: "none",
                   }}
                   onMouseDown={(e) => onCellDown(ri, ci, e)}
                   onTouchStart={(e) => onCellTouchStart(ri, ci, e)}
                   onMouseEnter={() => onCellEnter(ri, ci)}
-                  onClick={(e) => e.stopPropagation()}
                   onDoubleClick={(e) => {
                     e.stopPropagation();
                     dispatch({ type: "HISTORY_CHECKPOINT" });
                     setEditing({ r: ri, c: ci });
-                    setSelection(new Set([`${ri},${ci}`]));
+                    setSelection(normSel(ri, ci, ri, ci));
                   }}
                 >
                   {(rowSpan > 1 || colSpan > 1) && (
