@@ -11,7 +11,9 @@ export function useCellSelection(editingRef) {
   const [selection, setSelection] = useState(null);
   const [selStart, setSelStart] = useState(null);
   const selStartRef = useRef(selStart);
-  const cellTouchRef = useRef(null);
+  const cellTouchRef = useRef(null); // { r, c, x, y } タッチ開始情報
+  const longPressTimerRef = useRef(null);
+  const selDragActiveRef = useRef(false); // 長押しドラッグ中フラグ
 
   useEffect(() => {
     selStartRef.current = selStart;
@@ -33,33 +35,58 @@ export function useCellSelection(editingRef) {
     if (editingRef.current?.r === r && editingRef.current?.c === c) return;
     const t = e.touches[0];
     cellTouchRef.current = { r, c, x: t.clientX, y: t.clientY };
+    selDragActiveRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      // 長押し成立 → ドラッグ選択モード開始
+      selDragActiveRef.current = true;
+      setSelStart({ r, c });
+      setSelection(normSel(r, c, r, c));
+    }, 400);
   };
 
-  // タップ検知：スクロール（10px超移動）でキャンセル、指を離したら選択
   useEffect(() => {
     const onMove = (e) => {
       if (!cellTouchRef.current) return;
       const t = e.touches[0];
-      if (
+      if (selDragActiveRef.current) {
+        // ドラッグ選択モード：スクロールを抑止して選択範囲を拡張
+        if (e.cancelable) e.preventDefault();
+        const cell = document
+          .elementFromPoint(t.clientX, t.clientY)
+          ?.closest("[data-row]");
+        if (cell && selStartRef.current) {
+          const { r: sr, c: sc } = selStartRef.current;
+          setSelection(normSel(sr, sc, +cell.dataset.row, +cell.dataset.col));
+        }
+      } else if (
         Math.hypot(
           t.clientX - cellTouchRef.current.x,
           t.clientY - cellTouchRef.current.y,
         ) > 10
       ) {
+        // スクロール検知 → 長押しタイマーをキャンセル
+        clearTimeout(longPressTimerRef.current);
         cellTouchRef.current = null;
       }
     };
     const onEnd = () => {
-      if (cellTouchRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      if (!selDragActiveRef.current && cellTouchRef.current) {
+        // タップ → シングル選択
         const { r, c } = cellTouchRef.current;
         setSelection(normSel(r, c, r, c));
       }
+      if (selDragActiveRef.current) setSelStart(null);
       cellTouchRef.current = null;
+      selDragActiveRef.current = false;
     };
     const onCancel = () => {
+      clearTimeout(longPressTimerRef.current);
       cellTouchRef.current = null;
+      selDragActiveRef.current = false;
+      setSelStart(null);
     };
-    window.addEventListener("touchmove", onMove, { passive: true });
+    window.addEventListener("touchmove", onMove, { passive: false });
     window.addEventListener("touchend", onEnd);
     window.addEventListener("touchcancel", onCancel);
     return () => {
@@ -67,6 +94,7 @@ export function useCellSelection(editingRef) {
       window.removeEventListener("touchend", onEnd);
       window.removeEventListener("touchcancel", onCancel);
     };
+    // eslint-disable-next-line
   }, []);
 
   const onCellEnter = (r, c) => {
@@ -74,30 +102,12 @@ export function useCellSelection(editingRef) {
     setSelection(normSel(selStart.r, selStart.c, r, c));
   };
 
-  // 選択拡張（マウス解放 / タッチスワイプ）
+  // マウスドラッグ選択の終了
   useEffect(() => {
     if (!selStart) return;
     const up = () => setSelStart(null);
     window.addEventListener("mouseup", up);
-    window.addEventListener("touchend", up);
-    const onTouch = (e) => {
-      if (!selStartRef.current) return;
-      if (e.cancelable) e.preventDefault();
-      const t = e.touches[0];
-      const cell = document
-        .elementFromPoint(t.clientX, t.clientY)
-        ?.closest("[data-row]");
-      if (cell) {
-        const { r: sr, c: sc } = selStartRef.current;
-        setSelection(normSel(sr, sc, +cell.dataset.row, +cell.dataset.col));
-      }
-    };
-    window.addEventListener("touchmove", onTouch, { passive: false });
-    return () => {
-      window.removeEventListener("mouseup", up);
-      window.removeEventListener("touchend", up);
-      window.removeEventListener("touchmove", onTouch);
-    };
+    return () => window.removeEventListener("mouseup", up);
   }, [selStart]);
 
   return {
